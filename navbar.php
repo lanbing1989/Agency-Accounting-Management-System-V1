@@ -13,6 +13,9 @@
         <li class="nav-item"><a class="nav-link" href="temp_payment.php">临时收费</a></li>
 		<li class="nav-item"><a class="nav-link" href="tax_report.php">报税登记</a></li>
 		<li class="nav-item"><a class="nav-link" href="annual_report.php">年报登记</a></li>
+        <li class="nav-item"><a class="nav-link" href="ht_agreements.php">合同管理</a></li>
+        <li class="nav-item"><a class="nav-link" href="ht_contract_templates.php">合同模板</a></li>
+        <li class="nav-item"><a class="nav-link" href="ht_seal_templates.php">签章管理</a></li>
 		<li class="nav-item"><a class="nav-link" href="user_profile.php">修改密码</a></li>
 		<?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
 		<li class="nav-item"><a class="nav-link" href="user_manage.php">用户管理</a></li>
