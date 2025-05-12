@@ -1,16 +1,30 @@
 <?php
 require 'auth.php';
 require 'db.php';
+
+$error = '';
+
 if ($_SERVER['REQUEST_METHOD']=='POST') {
-    $stmt = $db->prepare("INSERT INTO contracts (client_name, contact_person, contact_phone, contact_email, remark) VALUES (:client_name, :contact_person, :contact_phone, :contact_email, :remark)");
-    $stmt->bindValue(':client_name', $_POST['client_name']);
-    $stmt->bindValue(':contact_person', $_POST['contact_person']);
-    $stmt->bindValue(':contact_phone', $_POST['contact_phone']);
-    $stmt->bindValue(':contact_email', $_POST['contact_email']);
-    $stmt->bindValue(':remark', $_POST['remark']);
-    $stmt->execute();
-    header('Location: index.php');
-    exit;
+    // 检查客户名称是否已存在
+$checkStmt = $db->prepare("SELECT COUNT(*) as cnt FROM contracts WHERE client_name = :client_name");
+$checkStmt->bindValue(':client_name', $_POST['client_name']);
+$result = $checkStmt->execute();
+$row = $result->fetchArray(SQLITE3_ASSOC);
+$exists = $row['cnt'];
+
+    if ($exists) {
+        $error = '客户名称已存在，请勿重复添加。';
+    } else {
+        $stmt = $db->prepare("INSERT INTO contracts (client_name, contact_person, contact_phone, contact_email, remark) VALUES (:client_name, :contact_person, :contact_phone, :contact_email, :remark)");
+        $stmt->bindValue(':client_name', $_POST['client_name']);
+        $stmt->bindValue(':contact_person', $_POST['contact_person']);
+        $stmt->bindValue(':contact_phone', $_POST['contact_phone']);
+        $stmt->bindValue(':contact_email', $_POST['contact_email']);
+        $stmt->bindValue(':remark', $_POST['remark']);
+        $stmt->execute();
+        header('Location: index.php');
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -24,6 +38,9 @@ if ($_SERVER['REQUEST_METHOD']=='POST') {
 <?php include('navbar.php'); ?>
 <div class="container mt-4">
     <h2 class="mb-4">新增客户</h2>
+    <?php if ($error): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
     <form method="post" class="bg-white p-4 rounded shadow-sm">
         <div class="mb-3">
             <label class="form-label">客户名称</label>

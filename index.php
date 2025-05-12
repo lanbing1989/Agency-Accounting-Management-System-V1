@@ -2,6 +2,12 @@
 require 'auth.php'; // 登录校验，放在最前面
 require 'db.php';
 
+// 分页参数
+$page = max(1, intval($_GET['page'] ?? 1));
+$page_size = 50;
+$offset = ($page - 1) * $page_size;
+
+// 搜索过滤
 $where = '';
 $params = [];
 if (!empty($_GET['client_name'])) {
@@ -9,13 +15,24 @@ if (!empty($_GET['client_name'])) {
     $params[':client_name'] = '%' . $_GET['client_name'] . '%';
 }
 
+// 统计总数
+$count_query = "SELECT COUNT(*) FROM contracts c WHERE 1 $where";
+$count_stmt = $db->prepare($count_query);
+foreach ($params as $k => $v) $count_stmt->bindValue($k, $v);
+$total = $count_stmt->execute()->fetchArray()[0];
+$total_pages = max(1, ceil($total / $page_size));
+
+// 客户列表
 $query = "SELECT c.*, 
     (SELECT MAX(service_end) FROM service_periods sp WHERE sp.contract_id = c.id) AS latest_end
     FROM contracts c
     WHERE 1 $where
-    ORDER BY latest_end DESC, c.id DESC";
+    ORDER BY latest_end DESC, c.id DESC
+    LIMIT :limit OFFSET :offset";
 $stmt = $db->prepare($query);
 foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+$stmt->bindValue(':limit', $page_size, SQLITE3_INTEGER);
+$stmt->bindValue(':offset', $offset, SQLITE3_INTEGER);
 $result = $stmt->execute();
 ?>
 <!DOCTYPE html>
@@ -37,6 +54,9 @@ $result = $stmt->execute();
         </div>
         <div class="col-auto">
             <a href="contract_add.php" class="btn btn-success">新增客户</a>
+        </div>
+        <div class="col-auto">
+            <a href="contract_import.php" class="btn btn-warning">导入客户</a>
         </div>
     </form>
     <div class="table-responsive">
@@ -72,6 +92,29 @@ $result = $stmt->execute();
         <?php endwhile; ?>
         </tbody>
     </table>
+    </div>
+    <!-- 分页导航 -->
+    <nav>
+        <ul class="pagination justify-content-center">
+            <li class="page-item<?= $page <= 1 ? ' disabled' : '' ?>">
+                <a class="page-link" href="?<?=http_build_query(array_merge($_GET, ['page'=>1]))?>">首页</a>
+            </li>
+            <li class="page-item<?= $page <= 1 ? ' disabled' : '' ?>">
+                <a class="page-link" href="?<?=http_build_query(array_merge($_GET, ['page'=>max(1,$page-1)]))?>">&laquo;</a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">第 <?=$page?> / <?=$total_pages?> 页</span>
+            </li>
+            <li class="page-item<?= $page >= $total_pages ? ' disabled' : '' ?>">
+                <a class="page-link" href="?<?=http_build_query(array_merge($_GET, ['page'=>min($total_pages,$page+1)]))?>">&raquo;</a>
+            </li>
+            <li class="page-item<?= $page >= $total_pages ? ' disabled' : '' ?>">
+                <a class="page-link" href="?<?=http_build_query(array_merge($_GET, ['page'=>$total_pages]))?>">尾页</a>
+            </li>
+        </ul>
+    </nav>
+    <div class="mb-3 text-center text-muted">
+        共 <?=$total?> 条，每页 <?=$page_size?> 条
     </div>
 </div>
 </body>
