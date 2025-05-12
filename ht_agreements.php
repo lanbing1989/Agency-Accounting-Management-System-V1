@@ -63,15 +63,16 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) $agreements[] = $row;
 <script>
 function copySignLink(id) {
     var origin = window.location.origin || (window.location.protocol + "//" + window.location.host);
-    var url = origin + '/ht_agreement_sign.php?id=' + id;
+    var link = origin + '/ht_agreement_sign.php?id=' + id;
+    var tips = "您好，以下是您的合同在线签署链接，请在电脑或微信/浏览器中打开，按页面提示完成签署：\n" + link;
     if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(url).then(function() {
-            alert("签署链接已复制，可粘贴发给客户：\n" + url + "\n\n提示：请让客户在电脑或微信/浏览器中打开此链接，在线签署合同。");
+        navigator.clipboard.writeText(tips).then(function() {
+            alert("已复制签署链接，可粘贴发给客户：\n\n" + tips);
         }, function() {
-            window.prompt("复制失败，请手动复制：", url);
+            window.prompt("复制失败，请手动复制：", tips);
         });
     } else {
-        window.prompt("请手动复制签署链接：", url);
+        window.prompt("请手动复制签署链接：", tips);
     }
 }
 </script>

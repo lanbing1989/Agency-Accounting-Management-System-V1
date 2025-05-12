@@ -72,38 +72,74 @@ function render_contract_template($tpl, $vars, $seal_img = '', $signature_img = 
     if ($signature_img && strpos($tpl, '{signature}') !== false) {
         $tpl = str_replace('{signature}', '<img src="' . $signature_img . '" style="height:60px;">', $tpl);
     } else if (strpos($tpl, '{signature}') !== false) {
-        $tpl = str_replace('{signature}', '<button id="showSignPad" class="btn btn-outline-primary btn-sm">甲方在线签字</button><div id="signPadArea" style="display:none;margin-top:10px;"></div>', $tpl);
+        $tpl = str_replace('{signature}', '<button id="showSignPad" class="btn btn-outline-primary btn-sm w-100 mt-3 mb-2">甲方在线签字</button><div id="signPadArea" style="display:none;margin-top:10px;"></div>', $tpl);
     }
     foreach ($vars as $k => $v) $tpl = str_replace('{'.$k.'}', htmlspecialchars($v), $tpl);
     return $tpl;
 }
 $content = render_contract_template($agreement['template_content'], $vars, $seal_img, $signature_img);
+
+// 判断是否微信内置浏览器
+function is_wechat() {
+    return strpos($_SERVER['HTTP_USER_AGENT'] ?? '', 'MicroMessenger') !== false;
+}
 ?>
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>合同在线签署</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <style>
-    #signature-pad { border:1px solid #aaa; border-radius:8px; background:#fff; }
+    #signature-pad {
+        border:1px solid #aaa;
+        border-radius:8px;
+        background:#fff;
+        width: 100%;
+        max-width: 400px;
+        height: 180px;
+        touch-action: none;
+        display: block;
+        margin: 0 auto;
+    }
+    @media (max-width: 600px) {
+      #signature-pad {
+        width: 100% !important;
+        max-width: 100vw !important;
+        height: 180px !important;
+      }
+      .btn {
+        font-size: 18px;
+        padding: 10px 0;
+        width: 100%;
+        margin-bottom: 12px;
+      }
+      body {
+        font-size: 16px;
+      }
+      .container {
+        padding-left: 3px;
+        padding-right: 3px;
+      }
+    }
     </style>
 </head>
-<body>
-<div class="container mt-4" style="max-width:800px;">
-    <h4>合同在线签署</h4>
-    <div class="bg-white p-4 rounded shadow-sm mb-4" style="white-space:pre-line;" id="contractContent">
+<body class="bg-light">
+<div class="container mt-3 mb-3" style="max-width:800px;">
+    <h4 class="mb-3 text-center">合同在线签署</h4>
+    <div class="bg-white p-3 p-md-4 rounded shadow-sm mb-4" style="white-space:pre-line;" id="contractContent">
         <?= $content ?>
     </div>
     <?php if ($signature_img): ?>
-        <div class="alert alert-success">已签署完成，合同内容只读。</div>
-        <a class="btn btn-info" href="ht_agreement_pdf.php?id=<?= $id ?>" target="_blank">下载PDF</a>
+        <div class="alert alert-success">合同已签署完成，您可随时查看。</div>
+        <?php if (is_wechat()): ?>
+            <div class="alert alert-info">如需下载PDF，请联系您的服务顾问发送给您。</div>
+        <?php endif; ?>
     <?php endif;?>
-    <a class="btn btn-secondary" href="javascript:history.back();">返回</a>
 </div>
 
 <?php if (!$signature_img): ?>
-<!-- 仅未签署时加载签名板JS -->
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -112,15 +148,42 @@ document.addEventListener('DOMContentLoaded', function() {
         showBtn.onclick = function() {
             const area = document.getElementById('signPadArea');
             area.innerHTML = `
-                <canvas id="signature-pad" width="350" height="100"></canvas>
-                <div class="mt-2">
-                  <button id="clear-sign" class="btn btn-warning btn-sm">清除</button>
-                  <button id="save-sign" class="btn btn-success btn-sm">确认签署</button>
+                <div class="mb-2">
+                  <canvas id="signature-pad" width="400" height="180" style="width:100%;height:180px;touch-action:none;"></canvas>
                 </div>
+                <div class="mb-2 d-flex gap-2 flex-wrap">
+                  <button id="clear-sign" class="btn btn-warning btn-lg flex-fill">清除</button>
+                  <button id="save-sign" class="btn btn-success btn-lg flex-fill">确认签署</button>
+                </div>
+                <div class="text-muted text-center" style="font-size:15px;">请用手指或触控笔在上方区域签名</div>
             `;
             area.style.display = '';
+
+            // 自动滚动到签名区
+            area.scrollIntoView({behavior: 'smooth', block: 'center'});
+
+            // 适配移动端canvas
+            function resizeCanvas() {
+                var canvas = document.getElementById('signature-pad');
+                var ratio =  Math.max(window.devicePixelRatio || 1, 1);
+                var width = area.offsetWidth > 0 ? area.offsetWidth : 350;
+                canvas.width = width * ratio;
+                canvas.height = 180 * ratio;
+                canvas.style.width = width + 'px';
+                canvas.style.height = '180px';
+                var ctx = canvas.getContext('2d');
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+                ctx.scale(ratio, ratio);
+            }
+            setTimeout(resizeCanvas, 100);
+            window.addEventListener('resize', resizeCanvas);
+
             let canvas = document.getElementById('signature-pad');
-            let pad = new SignaturePad(canvas);
+            let pad = new SignaturePad(canvas, {
+                backgroundColor: '#fff',
+                minWidth: 1.5,
+                maxWidth: 3,
+            });
 
             document.getElementById('clear-sign').onclick = function() { pad.clear(); }
             document.getElementById('save-sign').onclick = function() {
@@ -142,6 +205,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+</script>
+<?php endif;?>
+
+<?php if ($signature_img): ?>
+<script>
+function isWeChat() {
+    return /MicroMessenger/i.test(navigator.userAgent);
+}
 </script>
 <?php endif;?>
 </body>

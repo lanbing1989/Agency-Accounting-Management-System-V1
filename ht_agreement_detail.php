@@ -90,6 +90,22 @@ function render_contract_template($tpl, $vars, $seal_img = '', $signature_img = 
     return $tpl;
 }
 $content = render_contract_template($agreement['template_content'], $vars, $seal_img, $signature_img);
+
+// 生成签署链接
+$sign_url = "/ht_agreement_sign.php?id=" . $agreement['id'];
+
+// 读取pdf_map.json，获取pdf下载链接
+$pdf_url = '';
+$mapfile = __DIR__ . '/uploads/pdf_map.json';
+if (file_exists($mapfile)) {
+    $map = json_decode(file_get_contents($mapfile), true);
+    if (isset($map[$agreement['id']])) {
+        $pdf_url = $map[$agreement['id']];
+        if ($pdf_url[0] !== '/' && strpos($pdf_url, 'uploads') === 0) {
+            $pdf_url = '/' . $pdf_url;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -108,13 +124,35 @@ $content = render_contract_template($agreement['template_content'], $vars, $seal
     <div class="bg-white p-4 rounded shadow-sm mb-4" style="white-space:pre-line;" id="contractContent">
         <?= $content ?>
     </div>
-    <a class="btn btn-danger" href="ht_agreement_delete.php?id=<?=$agreement['id']?>" onclick="return confirm('确定要删除该合同吗？此操作不可恢复！');">删除合同</a>
-    <a class="btn btn-secondary" href="ht_agreements.php">返回</a>
+    <div class="mb-3">
+        <a class="btn btn-success" href="<?= $sign_url ?>" target="_blank">在线签署</a>
+        <button class="btn btn-info" onclick="copySignLink(<?= $agreement['id']?>)">复制签署链接</button>
+        <?php if ($pdf_url): ?>
+            <a class="btn btn-primary" href="<?= $pdf_url ?>" target="_blank">下载PDF</a>
+        <?php endif; ?>
+        <a class="btn btn-danger" href="ht_agreement_delete.php?id=<?=$agreement['id']?>" onclick="return confirm('确定要删除该合同吗？此操作不可恢复！');">删除合同</a>
+        <a class="btn btn-secondary" href="ht_agreements.php">返回</a>
+    </div>
 </div>
 
 <!-- 签名板弹窗/区域 -->
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
+function copySignLink(id) {
+    var origin = window.location.origin || (window.location.protocol + "//" + window.location.host);
+    var link = origin + '/ht_agreement_sign.php?id=' + id;
+    var tips = "您好，以下是您的合同在线签署链接，请在电脑或微信/浏览器中打开，按页面提示完成签署：\n" + link;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(tips).then(function() {
+            alert("已复制签署链接，可粘贴发给客户：\n\n" + tips);
+        }, function() {
+            window.prompt("复制失败，请手动复制：", tips);
+        });
+    } else {
+        window.prompt("请手动复制签署链接：", tips);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     let showBtn = document.getElementById('showSignPad');
     if (showBtn) {
