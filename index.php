@@ -1,4 +1,5 @@
 <?php
+require 'auth.php'; // 登录校验，放在最前面
 require 'db.php';
 
 $where = '';

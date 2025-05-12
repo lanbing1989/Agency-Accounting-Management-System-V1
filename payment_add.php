@@ -1,4 +1,5 @@
 <?php
+require 'auth.php';
 require 'db.php';
 $period_id = intval($_GET['period_id']);
 

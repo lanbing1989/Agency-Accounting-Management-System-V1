@@ -1,4 +1,5 @@
 <?php
+require 'auth.php';
 require 'db.php';
 $id = intval($_GET['id']);
 if ($_SERVER['REQUEST_METHOD']=='POST') {

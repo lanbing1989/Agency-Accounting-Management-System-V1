@@ -1,4 +1,5 @@
 <?php
+require 'auth.php';
 require 'db.php';
 $id = intval($_GET['id']);
 $contract = $db->query("SELECT * FROM contracts WHERE id=$id")->fetchArray(SQLITE3_ASSOC);

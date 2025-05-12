@@ -1,4 +1,5 @@
 <?php
+require 'auth.php';
 require 'db.php';
 if ($_SERVER['REQUEST_METHOD']=='POST') {
     $stmt = $db->prepare("INSERT INTO contracts (client_name, contact_person, contact_phone, contact_email, remark) VALUES (:client_name, :contact_person, :contact_phone, :contact_email, :remark)");

@@ -36,7 +36,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS service_segments (
     FOREIGN KEY (service_period_id) REFERENCES service_periods(id)
 )");
 
-// 收费记录表（is_temp=1为临时收费）
+// 收费记录表
 $db->exec("CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contract_id INTEGER NOT NULL,
@@ -48,4 +48,23 @@ $db->exec("CREATE TABLE IF NOT EXISTS payments (
     FOREIGN KEY (contract_id) REFERENCES contracts(id),
     FOREIGN KEY (service_segment_id) REFERENCES service_segments(id)
 )");
+
+// 用户表（登录用）
+$db->exec("CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL
+)");
+
+// 检查是否已存在用户，无则插入初始管理员
+$userCheck = $db->querySingle("SELECT COUNT(*) FROM users");
+if ($userCheck == 0) {
+    // 默认账号 admin/123456
+    $admin = 'admin';
+    $pass = password_hash('123456', PASSWORD_DEFAULT);
+    $stmt = $db->prepare("INSERT INTO users (username, password) VALUES (:u,:p)");
+    $stmt->bindValue(':u', $admin, SQLITE3_TEXT);
+    $stmt->bindValue(':p', $pass, SQLITE3_TEXT);
+    $stmt->execute();
+}
 ?>

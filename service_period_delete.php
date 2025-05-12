@@ -1,4 +1,5 @@
 <?php
+require 'auth.php';
 require 'db.php';
 $id = intval($_GET['id']);
 $contract_id = intval($_GET['contract_id']);

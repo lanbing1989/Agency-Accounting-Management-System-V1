@@ -11,6 +11,8 @@
         <li class="nav-item"><a class="nav-link" href="expire_remind.php">到期提醒</a></li>
         <li class="nav-item"><a class="nav-link" href="remind_list.php">催收提醒</a></li>
         <li class="nav-item"><a class="nav-link" href="temp_payment.php">临时收费</a></li>
+		<li class="nav-item"><a class="nav-link" href="user_profile.php">修改密码</a></li>
+        <li class="nav-item"><a class="nav-link" href="logout.php">退出</a></li>
       </ul>
     </div>
   </div>

@@ -1,4 +1,5 @@
 <?php
+require 'auth.php';
 require 'db.php';
 
 $days = isset($_GET['days']) ? intval($_GET['days']) : 30;

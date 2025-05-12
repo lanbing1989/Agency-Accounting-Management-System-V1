@@ -1,4 +1,5 @@
 <?php
+require 'auth.php';
 require 'db.php';
 $id = intval($_GET['id']);
 // 删除 payments

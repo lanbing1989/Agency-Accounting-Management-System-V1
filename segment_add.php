@@ -1,4 +1,5 @@
 <?php
+require 'auth.php';
 require 'db.php';
 function fix_date($d) {
     return preg_replace('/\./', '-', $d);
