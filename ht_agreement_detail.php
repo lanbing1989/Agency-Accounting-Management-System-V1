@@ -2,7 +2,7 @@
 require 'auth.php';
 require 'db.php';
 
-// 【修改】改为通过 uuid 获取参数
+// 通过 uuid 获取参数
 $uuid = $_GET['uuid'] ?? '';
 $agreement = $db->prepare("
 SELECT a.*, t.content AS template_content, c.client_name, c.contact_person, c.contact_phone, c.contact_email, c.remark, a.seal_id
@@ -92,9 +92,21 @@ function render_contract_template($tpl, $vars, $seal_img = '', $signature_img = 
     foreach ($vars as $k => $v) $tpl = str_replace('{'.$k.'}', htmlspecialchars($v), $tpl);
     return $tpl;
 }
-$content = render_contract_template($agreement['template_content'], $vars, $seal_img, $signature_img);
 
-// 【修改】所有签署功能/下载链接等都用uuid
+// ========== 关键：未签署时动态渲染，已签署时优先用快照 ==========
+if (empty($agreement['sign_image'])) {
+    // 未签署，允许签字
+    $content = render_contract_template($agreement['template_content'], $vars, $seal_img, '');
+} else {
+    // 已签署，优先用快照（含签字图片）
+    if (!empty($agreement['content_snapshot'])) {
+        $content = $agreement['content_snapshot'];
+    } else {
+        $content = render_contract_template($agreement['template_content'], $vars, $seal_img, $signature_img);
+    }
+}
+
+// 所有签署功能/下载链接等都用uuid
 $sign_url = "/ht_agreement_sign.php?uuid=" . urlencode($agreement['uuid']);
 
 // 读取pdf_map.json，获取pdf下载链接
@@ -102,7 +114,6 @@ $pdf_url = '';
 $mapfile = __DIR__ . '/uploads/pdf_map.json';
 if (file_exists($mapfile)) {
     $map = json_decode(file_get_contents($mapfile), true);
-    // 【修改】用uuid为key
     if (isset($map[$agreement['uuid']])) {
         $pdf_url = $map[$agreement['uuid']];
         if ($pdf_url[0] !== '/' && strpos($pdf_url, 'uploads') === 0) {
@@ -131,7 +142,6 @@ if (file_exists($mapfile)) {
     </div>
     <div class="mb-3">
         <a class="btn btn-success" href="<?= $sign_url ?>" target="_blank">在线签署</a>
-        <!-- 【修改】复制签署链接用uuid -->
         <button class="btn btn-info" onclick="copySignLink('<?= $agreement['uuid']?>')">复制签署链接</button>
         <?php if ($pdf_url): ?>
             <a class="btn btn-primary" href="<?= $pdf_url ?>" target="_blank">下载PDF</a>
@@ -141,7 +151,6 @@ if (file_exists($mapfile)) {
     </div>
 </div>
 
-<!-- 签名板弹窗/区域 -->
 <script src="/bootstrap/signature_pad.umd.min.js"></script>
 <script>
 function copySignLink(uuid) {
@@ -179,7 +188,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('save-sign').onclick = function() {
                 if (pad.isEmpty()) { alert('请先签名'); return; }
                 let data = pad.toDataURL('image/png');
-                // 【修改】AJAX保存也改为uuid
                 fetch('ht_agreement_sign_save.php?uuid=<?= urlencode($agreement['uuid'])?>',{
                     method:'POST',
                     headers:{'Content-Type':'application/json'},

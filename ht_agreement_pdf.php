@@ -79,28 +79,29 @@ $vars = [
     'sign_day'       => $sign_day,
 ];
 
-// **核心变量替换逻辑**
-$content = $agreement['template_content'];
-
-// 图片变量替换，盖章设置为42mm*42mm
-if ($seal_img) {
-    $content = str_replace('{seal}', '<img src="' . $seal_img . '" style="width:42mm; height:42mm;">', $content);
+// ========== 关键：优先使用快照内容 ==========
+if (!empty($agreement['content_snapshot'])) {
+    $content = $agreement['content_snapshot'];
 } else {
-    $content = str_replace('{seal}', '', $content);
+    // **核心变量替换逻辑**
+    $content = $agreement['template_content'];
+    // 图片变量替换，盖章设置为42mm*42mm
+    if ($seal_img) {
+        $content = str_replace('{seal}', '<img src="' . $seal_img . '" style="width:42mm; height:42mm;">', $content);
+    } else {
+        $content = str_replace('{seal}', '', $content);
+    }
+    if ($signature_img) {
+        $content = str_replace('{signature}', '<img src="' . $signature_img . '" style="height:20mm;">', $content);
+    } else {
+        $content = str_replace('{signature}', '', $content);
+    }
+    foreach ($vars as $k => $v) {
+        $content = str_replace('{' . $k . '}', htmlspecialchars($v), $content);
+    }
+    // 为兼容TCPDF，建议模板用HTML格式（如<br>换行），否则换行会不自然
+    $content = nl2br($content); // 如果模板是纯文本
 }
-if ($signature_img) {
-    $content = str_replace('{signature}', '<img src="' . $signature_img . '" style="height:20mm;">', $content);
-} else {
-    $content = str_replace('{signature}', '', $content);
-}
-
-// 其它变量替换
-foreach ($vars as $k => $v) {
-    $content = str_replace('{' . $k . '}', htmlspecialchars($v), $content);
-}
-
-// 为兼容TCPDF，建议模板用HTML格式（如<br>换行），否则换行会不自然
-$content = nl2br($content); // 如果模板是纯文本
 
 // 生成PDF
 $pdf = new TCPDF();

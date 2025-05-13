@@ -5,7 +5,7 @@ $uuid = $_GET['uuid'] ?? '';
 if(!$uuid) die('参数错误');
 // === 用uuid查询合同 ===
 $stmt = $db->prepare("
-SELECT a.*, t.content AS template_content, c.client_name, c.contact_person, c.contact_phone, c.contact_email, c.remark, a.seal_id
+SELECT a.*, t.content AS template_content, c.client_name, c.contact_person, c.contact_phone, c.contact_email, c.remark, a.seal_id, a.content_snapshot, a.sign_image
 FROM contracts_agreement a
 LEFT JOIN contract_templates t ON a.template_id = t.id
 LEFT JOIN contracts c ON a.client_id = c.id
@@ -70,19 +70,34 @@ $vars = [
     'sign_day'       => $sign_day,
 ];
 
+// 渲染函数
 function render_contract_template($tpl, $vars, $seal_img = '', $signature_img = '') {
     if ($seal_img && strpos($tpl, '{seal}') !== false) {
         $tpl = str_replace('{seal}', '<img src="' . $seal_img . '" style="height:60px;">', $tpl);
     }
-    if ($signature_img && strpos($tpl, '{signature}') !== false) {
-        $tpl = str_replace('{signature}', '<img src="' . $signature_img . '" style="height:60px;">', $tpl);
-    } else if (strpos($tpl, '{signature}') !== false) {
-        $tpl = str_replace('{signature}', '<button id="showSignPad" class="btn btn-outline-primary btn-sm w-100 mt-3 mb-2">甲方在线签字</button><div id="signPadArea" style="display:none;margin-top:10px;"></div>', $tpl);
+    if (strpos($tpl, '{signature}') !== false) {
+        if ($signature_img) {
+            $tpl = str_replace('{signature}', '<img src="' . $signature_img . '" style="height:60px;">', $tpl);
+        } else {
+            $tpl = str_replace('{signature}', '<button id="showSignPad" class="btn btn-outline-primary btn-sm w-100 mt-3 mb-2">甲方在线签字</button><div id="signPadArea" style="display:none;margin-top:10px;"></div>', $tpl);
+        }
     }
     foreach ($vars as $k => $v) $tpl = str_replace('{'.$k.'}', htmlspecialchars($v), $tpl);
     return $tpl;
 }
-$content = render_contract_template($agreement['template_content'], $vars, $seal_img, $signature_img);
+
+// ========== 关键：未签署时动态渲染，已签署时用快照 ==========
+if (empty($agreement['sign_image'])) {
+    // 未签署，允许签字
+    $content = render_contract_template($agreement['template_content'], $vars, $seal_img, '');
+} else {
+    // 已签署，优先用快照（含签字图片）
+    if (!empty($agreement['content_snapshot'])) {
+        $content = $agreement['content_snapshot'];
+    } else {
+        $content = render_contract_template($agreement['template_content'], $vars, $seal_img, $signature_img);
+    }
+}
 
 // 判断是否微信内置浏览器
 function is_wechat() {
@@ -138,11 +153,11 @@ function is_wechat() {
     </div>
     <?php if ($signature_img): ?>
         <div class="alert alert-success">合同已签署完成，您可随时查看。</div>
-            <div class="alert alert-info">如需下载PDF，请联系您的服务顾问发送给您。</div>
+        <div class="alert alert-info">如需下载PDF，请联系您的服务顾问发送给您。</div>
     <?php endif;?>
 </div>
 
-<?php if (!$signature_img): ?>
+<?php if (empty($signature_img)): ?>
 <script src="/bootstrap/signature_pad.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {

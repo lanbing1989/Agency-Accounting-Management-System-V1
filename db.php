@@ -97,9 +97,10 @@ $db->exec("CREATE TABLE IF NOT EXISTS seal_templates (
 
 // 合同实例表（每个合同记录）
 // 新增 sign_date 字段，记录签署日期
+// 新增 content_snapshot 字段，记录快照内容
 $db->exec("CREATE TABLE IF NOT EXISTS contracts_agreement (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-	uuid TEXT UNIQUE, -- 新增的唯一标识
+    uuid TEXT UNIQUE, -- 新增的唯一标识
     client_id INTEGER,
     template_id INTEGER,
     seal_id INTEGER,
@@ -110,6 +111,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS contracts_agreement (
     sign_date TEXT,
     service_period_id INTEGER,
     service_segment_id INTEGER,
+    content_snapshot TEXT, -- 新增快照字段
     FOREIGN KEY(client_id) REFERENCES contracts(id),
     FOREIGN KEY(template_id) REFERENCES contract_templates(id),
     FOREIGN KEY(seal_id) REFERENCES seal_templates(id),
@@ -170,6 +172,19 @@ if (!$has_period) {
 }
 if (!$has_segment) {
     $db->exec("ALTER TABLE contracts_agreement ADD COLUMN service_segment_id INTEGER");
+}
+
+// 自动升级：contracts_agreement表检查content_snapshot字段
+$res5 = $db->query("PRAGMA table_info(contracts_agreement)");
+$has_snapshot = false;
+while ($col = $res5->fetchArray(SQLITE3_ASSOC)) {
+    if ($col['name'] === 'content_snapshot') {
+        $has_snapshot = true;
+        break;
+    }
+}
+if (!$has_snapshot) {
+    $db->exec("ALTER TABLE contracts_agreement ADD COLUMN content_snapshot TEXT");
 }
 
 // 检查是否已存在用户，无则插入初始管理员 admin/123456

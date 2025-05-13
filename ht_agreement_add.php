@@ -9,19 +9,13 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) $clients[] = $row;
 
 // 模板下拉
 $templates = [];
-$res = $db->query("SELECT id, name FROM contract_templates ORDER BY id DESC");
+$res = $db->query("SELECT id, name, content FROM contract_templates ORDER BY id DESC");
 while ($row = $res->fetchArray(SQLITE3_ASSOC)) $templates[] = $row;
 
 // 签章模板下拉
 $seals = [];
-$res = $db->query("SELECT id, name FROM seal_templates ORDER BY id DESC");
+$res = $db->query("SELECT id, name, image_path FROM seal_templates ORDER BY id DESC");
 while ($row = $res->fetchArray(SQLITE3_ASSOC)) $seals[] = $row;
-
-// =============================
-// 【修改1】插入UUID字段，确保表结构中有uuid字段
-// 可选：如果还没加字段，需要先执行：
-// $db->exec("ALTER TABLE contracts_agreement ADD COLUMN uuid TEXT UNIQUE");
-// =============================
 
 // 保存
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -31,29 +25,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $service_segment_id = intval($_POST['service_segment_id'] ?? 0);
     $seal_id = intval($_POST['seal_id'] ?? 0);
 
-    // =============================
-    // 【修改2】生成随机唯一uuid
-    // =============================
+    // 生成随机唯一uuid
     function generate_uuid($length = 16) {
-        return bin2hex(random_bytes($length));
+        return bin2hex(random_bytes($length / 2));
     }
-    $uuid = generate_uuid(8); // 16字符长度
+    $uuid = generate_uuid(16); // 16字符长度
 
-    // =============================
-    // 【修改3】插入时带上uuid字段
-    // =============================
-    $stmt = $db->prepare("INSERT INTO contracts_agreement (client_id, template_id, service_period_id, service_segment_id, seal_id, uuid) VALUES (:client_id, :template_id, :service_period_id, :service_segment_id, :seal_id, :uuid)");
+    // 获取合同模板内容
+    $template = $db->query("SELECT * FROM contract_templates WHERE id=$template_id")->fetchArray(SQLITE3_ASSOC);
+    $template_content = $template ? $template['content'] : '';
+
+    // 获取客户信息
+    $client = $db->query("SELECT * FROM contracts WHERE id=$client_id")->fetchArray(SQLITE3_ASSOC);
+
+    // 服务期
+    $period = null;
+    if ($service_period_id) {
+        $period = $db->query("SELECT * FROM service_periods WHERE id=$service_period_id")->fetchArray(SQLITE3_ASSOC);
+    }
+
+    // 分段
+    $segment = null;
+    if ($service_segment_id) {
+        $segment = $db->query("SELECT * FROM service_segments WHERE id=$service_segment_id")->fetchArray(SQLITE3_ASSOC);
+    }
+
+    // 盖章图片
+    $seal_img = '';
+    if ($seal_id) {
+        $seal = $db->query("SELECT image_path FROM seal_templates WHERE id=$seal_id")->fetchArray(SQLITE3_ASSOC);
+        if ($seal && file_exists($seal['image_path'])) $seal_img = $seal['image_path'];
+    }
+    $signature_img = '';
+
+    // 合同变量
+    $vars = [
+        'client_name'    => $client['client_name'] ?? '',
+        'contact_person' => $client['contact_person'] ?? '',
+        'contact_phone'  => $client['contact_phone'] ?? '',
+        'contact_email'  => $client['contact_email'] ?? '',
+        'remark'         => $client['remark'] ?? '',
+        'service_start'  => $period['service_start'] ?? '',
+        'service_end'    => $period['service_end'] ?? '',
+        'month_count'    => $period['month_count'] ?? '',
+        'package_type'   => $period['package_type'] ?? '',
+        'price_per_year' => $segment ? ($segment['price_per_year'] ?? '') : ($period['price_per_year'] ?? ''),
+        'segment_fee'    => $segment['segment_fee'] ?? '',
+        'sign_date'      => date('Y-m-d'),
+        'sign_year'      => date('Y'),
+        'sign_month'     => date('m'),
+        'sign_day'       => date('d'),
+    ];
+
+    // 合同渲染函数
+    function render_contract_template($tpl, $vars, $seal_img = '', $signature_img = '') {
+        if ($seal_img && strpos($tpl, '{seal}') !== false) {
+            $tpl = str_replace('{seal}', '<img src="' . $seal_img . '" style="height:60px;">', $tpl);
+        }
+        if ($signature_img && strpos($tpl, '{signature}') !== false) {
+            $tpl = str_replace('{signature}', '<img src="' . $signature_img . '" style="height:60px;">', $tpl);
+        }
+        foreach ($vars as $k => $v) $tpl = str_replace('{'.$k.'}', htmlspecialchars($v), $tpl);
+        return $tpl;
+    }
+    // 生成快照
+    $content_snapshot = render_contract_template($template_content, $vars, $seal_img, $signature_img);
+
+    // 插入
+    $stmt = $db->prepare("INSERT INTO contracts_agreement (client_id, template_id, service_period_id, service_segment_id, seal_id, uuid, content_snapshot) VALUES (:client_id, :template_id, :service_period_id, :service_segment_id, :seal_id, :uuid, :content_snapshot)");
     $stmt->bindValue(':client_id', $client_id, SQLITE3_INTEGER);
     $stmt->bindValue(':template_id', $template_id, SQLITE3_INTEGER);
     $stmt->bindValue(':service_period_id', $service_period_id ? $service_period_id : null, SQLITE3_INTEGER);
     $stmt->bindValue(':service_segment_id', $service_segment_id ? $service_segment_id : null, SQLITE3_INTEGER);
     $stmt->bindValue(':seal_id', $seal_id ? $seal_id : null, SQLITE3_INTEGER);
     $stmt->bindValue(':uuid', $uuid, SQLITE3_TEXT);
+    $stmt->bindValue(':content_snapshot', $content_snapshot, SQLITE3_TEXT);
     $stmt->execute();
 
-    // =============================
-    // 【修改4】跳转时用uuid而非id
-    // =============================
     header("Location: ht_agreement_detail.php?uuid=$uuid");
     exit;
 }
@@ -64,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>新建合同</title>
     <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/bootstrap/jquery.min.js"></script>
 </head>
 <body class="bg-light">
