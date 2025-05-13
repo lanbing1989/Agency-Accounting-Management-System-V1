@@ -17,6 +17,12 @@ $seals = [];
 $res = $db->query("SELECT id, name FROM seal_templates ORDER BY id DESC");
 while ($row = $res->fetchArray(SQLITE3_ASSOC)) $seals[] = $row;
 
+// =============================
+// 【修改1】插入UUID字段，确保表结构中有uuid字段
+// 可选：如果还没加字段，需要先执行：
+// $db->exec("ALTER TABLE contracts_agreement ADD COLUMN uuid TEXT UNIQUE");
+// =============================
+
 // 保存
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $client_id = intval($_POST['client_id']);
@@ -25,15 +31,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $service_segment_id = intval($_POST['service_segment_id'] ?? 0);
     $seal_id = intval($_POST['seal_id'] ?? 0);
 
-    $stmt = $db->prepare("INSERT INTO contracts_agreement (client_id, template_id, service_period_id, service_segment_id, seal_id) VALUES (:client_id, :template_id, :service_period_id, :service_segment_id, :seal_id)");
+    // =============================
+    // 【修改2】生成随机唯一uuid
+    // =============================
+    function generate_uuid($length = 16) {
+        return bin2hex(random_bytes($length));
+    }
+    $uuid = generate_uuid(8); // 16字符长度
+
+    // =============================
+    // 【修改3】插入时带上uuid字段
+    // =============================
+    $stmt = $db->prepare("INSERT INTO contracts_agreement (client_id, template_id, service_period_id, service_segment_id, seal_id, uuid) VALUES (:client_id, :template_id, :service_period_id, :service_segment_id, :seal_id, :uuid)");
     $stmt->bindValue(':client_id', $client_id, SQLITE3_INTEGER);
     $stmt->bindValue(':template_id', $template_id, SQLITE3_INTEGER);
     $stmt->bindValue(':service_period_id', $service_period_id ? $service_period_id : null, SQLITE3_INTEGER);
     $stmt->bindValue(':service_segment_id', $service_segment_id ? $service_segment_id : null, SQLITE3_INTEGER);
     $stmt->bindValue(':seal_id', $seal_id ? $seal_id : null, SQLITE3_INTEGER);
+    $stmt->bindValue(':uuid', $uuid, SQLITE3_TEXT);
     $stmt->execute();
-    $id = $db->lastInsertRowID();
-    header("Location: ht_agreement_detail.php?id=$id");
+
+    // =============================
+    // 【修改4】跳转时用uuid而非id
+    // =============================
+    header("Location: ht_agreement_detail.php?uuid=$uuid");
     exit;
 }
 ?>
@@ -42,8 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <title>新建合同</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/bootstrap/jquery.min.js"></script>
 </head>
 <body class="bg-light">
 <?php include('navbar.php');?>

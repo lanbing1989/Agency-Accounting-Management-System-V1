@@ -2,15 +2,19 @@
 require_once('tcpdf_min/tcpdf.php');
 require 'db.php';
 
-$id = intval($_GET['id'] ?? 0);
+// 【修改1】用uuid参数，不用id
+$uuid = $_GET['uuid'] ?? '';
 
-$agreement = $db->query("
+// 【修改2】用uuid查询合同
+$stmt = $db->prepare("
 SELECT a.*, t.content AS template_content, c.client_name, c.contact_person, c.contact_phone, c.contact_email, c.remark, a.seal_id
 FROM contracts_agreement a
 LEFT JOIN contract_templates t ON a.template_id = t.id
 LEFT JOIN contracts c ON a.client_id = c.id
-WHERE a.id=$id
-")->fetchArray(SQLITE3_ASSOC);
+WHERE a.uuid = :uuid
+");
+$stmt->bindValue(':uuid', $uuid, SQLITE3_TEXT);
+$agreement = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
 
 if (!$agreement) die('合同不存在');
 
@@ -39,15 +43,12 @@ if (!empty($agreement['sign_image']) && file_exists($agreement['sign_image'])) {
 }
 
 // 处理签署日期
-// 假设你的 contracts_agreement 表里有 sign_date 字段（如没有，请先在表中添加）
 if (!empty($agreement['sign_date'])) {
     $sign_date = $agreement['sign_date'];
-    // 拆解成年、月、日
     $sign_year = date('Y', strtotime($sign_date));
     $sign_month = date('m', strtotime($sign_date));
     $sign_day = date('d', strtotime($sign_date));
 } else {
-    // 若未签署，默认用当前日期
     $sign_date = date('Y-m-d');
     $sign_year = date('Y');
     $sign_month = date('m');
@@ -107,5 +108,6 @@ $pdf->AddPage();
 $pdf->SetFont('stsongstdlight', '', 13, '', false); // 中文支持
 $pdf->writeHTML($content, true, false, true, false, '');
 
-$pdf->Output('agreement_'.$id.'.pdf', 'I');
+// 【修改3】输出文件名用uuid
+$pdf->Output('agreement_'.$uuid.'.pdf', 'I');
 ?>

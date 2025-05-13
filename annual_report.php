@@ -77,7 +77,8 @@ $is_last_month = ($month == 6);
 <head>
     <meta charset="utf-8">
     <title>工商年报登记</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
     <style>
     .deadline-alert {font-weight: bold;}
     .deadline-critical {color: #fff; background: #d9534f; padding: 0.3em 0.7em; border-radius: 6px;}

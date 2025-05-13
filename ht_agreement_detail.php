@@ -2,14 +2,17 @@
 require 'auth.php';
 require 'db.php';
 
-$id = intval($_GET['id'] ?? 0);
-$agreement = $db->query("
+// 【修改】改为通过 uuid 获取参数
+$uuid = $_GET['uuid'] ?? '';
+$agreement = $db->prepare("
 SELECT a.*, t.content AS template_content, c.client_name, c.contact_person, c.contact_phone, c.contact_email, c.remark, a.seal_id
 FROM contracts_agreement a
 LEFT JOIN contract_templates t ON a.template_id = t.id
 LEFT JOIN contracts c ON a.client_id = c.id
-WHERE a.id=$id
-")->fetchArray(SQLITE3_ASSOC);
+WHERE a.uuid = :uuid
+");
+$agreement->bindValue(':uuid', $uuid, SQLITE3_TEXT);
+$agreement = $agreement->execute()->fetchArray(SQLITE3_ASSOC);
 
 if (!$agreement) {
     die('合同不存在');
@@ -91,16 +94,17 @@ function render_contract_template($tpl, $vars, $seal_img = '', $signature_img = 
 }
 $content = render_contract_template($agreement['template_content'], $vars, $seal_img, $signature_img);
 
-// 生成签署链接
-$sign_url = "/ht_agreement_sign.php?id=" . $agreement['id'];
+// 【修改】所有签署功能/下载链接等都用uuid
+$sign_url = "/ht_agreement_sign.php?uuid=" . urlencode($agreement['uuid']);
 
 // 读取pdf_map.json，获取pdf下载链接
 $pdf_url = '';
 $mapfile = __DIR__ . '/uploads/pdf_map.json';
 if (file_exists($mapfile)) {
     $map = json_decode(file_get_contents($mapfile), true);
-    if (isset($map[$agreement['id']])) {
-        $pdf_url = $map[$agreement['id']];
+    // 【修改】用uuid为key
+    if (isset($map[$agreement['uuid']])) {
+        $pdf_url = $map[$agreement['uuid']];
         if ($pdf_url[0] !== '/' && strpos($pdf_url, 'uploads') === 0) {
             $pdf_url = '/' . $pdf_url;
         }
@@ -112,7 +116,8 @@ if (file_exists($mapfile)) {
 <head>
     <meta charset="utf-8">
     <title>合同详情</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
     <style>
     #signature-pad { border:1px solid #aaa; border-radius:8px; background:#fff; }
     </style>
@@ -126,21 +131,22 @@ if (file_exists($mapfile)) {
     </div>
     <div class="mb-3">
         <a class="btn btn-success" href="<?= $sign_url ?>" target="_blank">在线签署</a>
-        <button class="btn btn-info" onclick="copySignLink(<?= $agreement['id']?>)">复制签署链接</button>
+        <!-- 【修改】复制签署链接用uuid -->
+        <button class="btn btn-info" onclick="copySignLink('<?= $agreement['uuid']?>')">复制签署链接</button>
         <?php if ($pdf_url): ?>
             <a class="btn btn-primary" href="<?= $pdf_url ?>" target="_blank">下载PDF</a>
         <?php endif; ?>
-        <a class="btn btn-danger" href="ht_agreement_delete.php?id=<?=$agreement['id']?>" onclick="return confirm('确定要删除该合同吗？此操作不可恢复！');">删除合同</a>
+        <a class="btn btn-danger" href="ht_agreement_delete.php?uuid=<?= urlencode($agreement['uuid'])?>" onclick="return confirm('确定要删除该合同吗？此操作不可恢复！');">删除合同</a>
         <a class="btn btn-secondary" href="ht_agreements.php">返回</a>
     </div>
 </div>
 
 <!-- 签名板弹窗/区域 -->
-<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="/bootstrap/signature_pad.umd.min.js"></script>
 <script>
-function copySignLink(id) {
+function copySignLink(uuid) {
     var origin = window.location.origin || (window.location.protocol + "//" + window.location.host);
-    var link = origin + '/ht_agreement_sign.php?id=' + id;
+    var link = origin + '/ht_agreement_sign.php?uuid=' + uuid;
     var tips = "您好，以下是您的合同在线签署链接，请在电脑或微信/浏览器中打开，按页面提示完成签署：\n" + link;
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(tips).then(function() {
@@ -173,8 +179,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('save-sign').onclick = function() {
                 if (pad.isEmpty()) { alert('请先签名'); return; }
                 let data = pad.toDataURL('image/png');
-                // AJAX保存
-                fetch('ht_agreement_sign_save.php?id=<?= $agreement['id']?>',{
+                // 【修改】AJAX保存也改为uuid
+                fetch('ht_agreement_sign_save.php?uuid=<?= urlencode($agreement['uuid'])?>',{
                     method:'POST',
                     headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({ signature: data })

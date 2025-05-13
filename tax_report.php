@@ -115,7 +115,8 @@ for ($i = 0; $i < 12; $i++) {
 <head>
     <meta charset="utf-8">
     <title>税务申报提醒/登记</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
     <style>
     .small-remark { font-size: 0.95em; color: #666; }
     .reported { color: green; font-weight: bold; }

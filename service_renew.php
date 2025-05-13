@@ -22,7 +22,8 @@ if ($_SERVER['REQUEST_METHOD']=='POST') {
 <head>
     <meta charset="utf-8">
     <title>续费</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
 </head>
 <body class="bg-light">
 <?php include('navbar.php'); ?>

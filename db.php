@@ -99,6 +99,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS seal_templates (
 // 新增 sign_date 字段，记录签署日期
 $db->exec("CREATE TABLE IF NOT EXISTS contracts_agreement (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+	uuid TEXT UNIQUE, -- 新增的唯一标识
     client_id INTEGER,
     template_id INTEGER,
     seal_id INTEGER,

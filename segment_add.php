@@ -98,7 +98,8 @@ if ($_SERVER['REQUEST_METHOD']=='POST' && $edit_id) {
 <head>
     <meta charset="utf-8">
     <title>服务期价格分段/调整</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
     <style>
     .btn-sm { margin-right: 4px;}
     </style>

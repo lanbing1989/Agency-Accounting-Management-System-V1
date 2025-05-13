@@ -24,7 +24,8 @@ $temp_payments = $db->query("SELECT * FROM payments WHERE contract_id=$id AND is
 <head>
     <meta charset="utf-8">
     <title>客户详情</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
 </head>
 <body class="bg-light">
 <?php include('navbar.php'); ?>

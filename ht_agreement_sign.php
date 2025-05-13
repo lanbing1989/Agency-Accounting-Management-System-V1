@@ -1,13 +1,18 @@
 <?php
 require 'db.php';
-$id = intval($_GET['id'] ?? 0);
-$agreement = $db->query("
+// === 用uuid参数，不用id ===
+$uuid = $_GET['uuid'] ?? '';
+if(!$uuid) die('参数错误');
+// === 用uuid查询合同 ===
+$stmt = $db->prepare("
 SELECT a.*, t.content AS template_content, c.client_name, c.contact_person, c.contact_phone, c.contact_email, c.remark, a.seal_id
 FROM contracts_agreement a
 LEFT JOIN contract_templates t ON a.template_id = t.id
 LEFT JOIN contracts c ON a.client_id = c.id
-WHERE a.id=$id
-")->fetchArray(SQLITE3_ASSOC);
+WHERE a.uuid = :uuid
+");
+$stmt->bindValue(':uuid', $uuid, SQLITE3_TEXT);
+$agreement = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
 
 if (!$agreement) die('合同不存在');
 
@@ -133,14 +138,12 @@ function is_wechat() {
     </div>
     <?php if ($signature_img): ?>
         <div class="alert alert-success">合同已签署完成，您可随时查看。</div>
-        <?php if (is_wechat()): ?>
             <div class="alert alert-info">如需下载PDF，请联系您的服务顾问发送给您。</div>
-        <?php endif; ?>
     <?php endif;?>
 </div>
 
 <?php if (!$signature_img): ?>
-<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="/bootstrap/signature_pad.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let showBtn = document.getElementById('showSignPad');
@@ -189,8 +192,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('save-sign').onclick = function() {
                 if (pad.isEmpty()) { alert('请先签名'); return; }
                 let data = pad.toDataURL('image/png');
-                // AJAX保存
-                fetch('ht_agreement_sign_save.php?id=<?= $agreement['id']?>',{
+                // ========== 用uuid参数 ==========
+                fetch('ht_agreement_sign_save.php?uuid=<?= urlencode($agreement['uuid']) ?>',{
                     method:'POST',
                     headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({ signature: data })

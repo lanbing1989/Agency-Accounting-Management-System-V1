@@ -18,7 +18,8 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) $agreements[] = $row;
 <head>
     <meta charset="utf-8">
     <title>合同管理</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
 <?php include('navbar.php');?>
@@ -45,10 +46,11 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) $agreements[] = $row;
                 <td><?= (!empty($a['sign_image'])) ? '已签署' : '未签署' ?></td>
                 <td><?= !empty($a['sign_date']) ? $a['sign_date'] : '未签署' ?></td>
                 <td>
-                    <a class="btn btn-sm btn-primary" href="ht_agreement_detail.php?id=<?= $a['id'] ?>">查看</a>
-                    <a class="btn btn-sm btn-success" href="ht_agreement_sign.php?id=<?= $a['id'] ?>" target="_blank">在线签署</a>
-                    <a class="btn btn-sm btn-info" href="javascript:void(0);" onclick="copySignLink(<?= $a['id'] ?>)">复制签署链接</a>
-                    <a class="btn btn-sm btn-danger" href="ht_agreement_delete.php?id=<?= $a['id'] ?>"
+                    <!-- 修改为uuid跳转 -->
+                    <a class="btn btn-sm btn-primary" href="ht_agreement_detail.php?uuid=<?= urlencode($a['uuid']) ?>">查看</a>
+                    <a class="btn btn-sm btn-success" href="ht_agreement_sign.php?uuid=<?= urlencode($a['uuid']) ?>" target="_blank">在线签署</a>
+                    <a class="btn btn-sm btn-info" href="javascript:void(0);" onclick="copySignLink('<?= $a['uuid'] ?>')">复制签署链接</a>
+                    <a class="btn btn-sm btn-danger" href="ht_agreement_delete.php?uuid=<?= urlencode($a['uuid']) ?>"
                        onclick="return confirm('确定要删除该合同吗？此操作不可恢复！');">删除</a>
                 </td>
             </tr>
@@ -61,9 +63,9 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) $agreements[] = $row;
     </div>
 </div>
 <script>
-function copySignLink(id) {
+function copySignLink(uuid) {
     var origin = window.location.origin || (window.location.protocol + "//" + window.location.host);
-    var link = origin + '/ht_agreement_sign.php?id=' + id;
+    var link = origin + '/ht_agreement_sign.php?uuid=' + encodeURIComponent(uuid);
     var tips = "您好，以下是您的合同在线签署链接，请在电脑或微信/浏览器中打开，按页面提示完成签署：\n" + link;
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(tips).then(function() {

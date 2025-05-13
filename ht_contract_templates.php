@@ -18,7 +18,8 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) $templates[] = $row;
 <head>
     <meta charset="utf-8">
     <title>合同模板管理</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<script src="/bootstrap/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
 <?php include('navbar.php');?>
