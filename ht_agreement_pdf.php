@@ -2,10 +2,8 @@
 require_once('tcpdf_min/tcpdf.php');
 require 'db.php';
 
-// 【修改1】用uuid参数，不用id
 $uuid = $_GET['uuid'] ?? '';
 
-// 【修改2】用uuid查询合同
 $stmt = $db->prepare("
 SELECT a.*, t.content AS template_content, c.client_name, c.contact_person, c.contact_phone, c.contact_email, c.remark, a.seal_id
 FROM contracts_agreement a
@@ -55,7 +53,6 @@ if (!empty($agreement['sign_date'])) {
     $sign_day = date('d');
 }
 
-// 变量准备
 $vars = [
     'client_name'    => $agreement['client_name'] ?? '',
     'contact_person' => $agreement['contact_person'] ?? '',
@@ -68,7 +65,6 @@ $vars = [
     'package_type'   => $period['package_type'] ?? '',
     'price_per_year' => $segment ? ($segment['price_per_year'] ?? '') : ($period['price_per_year'] ?? ''),
     'segment_fee'    => $segment['segment_fee'] ?? '',
-    // 日期变量
     'today'          => $sign_date,
     'year'           => $sign_year,
     'month'          => $sign_month,
@@ -82,10 +78,10 @@ $vars = [
 // ========== 关键：优先使用快照内容 ==========
 if (!empty($agreement['content_snapshot'])) {
     $content = $agreement['content_snapshot'];
+    // 统一各种换行符和tab为<br>
+    $content = str_replace(["\r\n", "\r", "\n", "\t"], '<br>', $content);
 } else {
-    // **核心变量替换逻辑**
     $content = $agreement['template_content'];
-    // 图片变量替换，盖章设置为42mm*42mm
     if ($seal_img) {
         $content = str_replace('{seal}', '<img src="' . $seal_img . '" style="width:42mm; height:42mm;">', $content);
     } else {
@@ -99,16 +95,13 @@ if (!empty($agreement['content_snapshot'])) {
     foreach ($vars as $k => $v) {
         $content = str_replace('{' . $k . '}', htmlspecialchars($v), $content);
     }
-    // 为兼容TCPDF，建议模板用HTML格式（如<br>换行），否则换行会不自然
-    $content = nl2br($content); // 如果模板是纯文本
+    $content = nl2br($content);
 }
 
-// 生成PDF
 $pdf = new TCPDF();
 $pdf->AddPage();
 $pdf->SetFont('stsongstdlight', '', 13, '', false); // 中文支持
 $pdf->writeHTML($content, true, false, true, false, '');
 
-// 【修改3】输出文件名用uuid
 $pdf->Output('agreement_'.$uuid.'.pdf', 'I');
 ?>
