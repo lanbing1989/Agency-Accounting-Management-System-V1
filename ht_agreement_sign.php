@@ -99,10 +99,6 @@ if (empty($agreement['sign_image'])) {
     }
 }
 
-// 判断是否微信内置浏览器
-function is_wechat() {
-    return strpos($_SERVER['HTTP_USER_AGENT'] ?? '', 'MicroMessenger') !== false;
-}
 ?>
 <!DOCTYPE html>
 <html>
@@ -110,7 +106,7 @@ function is_wechat() {
     <meta charset="utf-8">
     <title>合同在线签署</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css">
     <style>
     #signature-pad {
         border:1px solid #aaa;
@@ -143,7 +139,24 @@ function is_wechat() {
         padding-right: 3px;
       }
     }
+    /* 打印优化：隐藏按钮/警告等不需要打印的内容 */
+    @media print {
+      .noprint, .btn, .alert {
+        display: none !important;
+      }
+      body {
+        background: #fff !important;
+      }
+      .container {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    }
     </style>
+    <!-- 引入html2canvas CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body class="bg-light">
 <div class="container mt-3 mb-3" style="max-width:800px;">
@@ -152,6 +165,10 @@ function is_wechat() {
         <?= $content ?>
     </div>
     <?php if ($signature_img): ?>
+        <div class="noprint text-end mb-3">
+            <button class="btn btn-primary" id="printBtn">打印合同</button>
+            <button class="btn btn-success" id="genJpgBtn">生成图片</button>
+        </div>
         <div class="alert alert-success">合同已签署完成，您可随时查看。</div>
         <div class="alert alert-info">如需下载PDF，请联系您的服务顾问发送给您。</div>
     <?php endif;?>
@@ -228,9 +245,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <?php if ($signature_img): ?>
 <script>
-function isWeChat() {
-    return /MicroMessenger/i.test(navigator.userAgent);
+function isSpecialBrowser() {
+    // 小米、QQ、UC、夸克、微信、支付宝等
+    return /MiuiBrowser|QQBrowser|UCBrowser|Quark|MicroMessenger|AlipayClient/i.test(navigator.userAgent);
 }
+document.addEventListener('DOMContentLoaded', function() {
+    var printBtn = document.getElementById('printBtn');
+    if (printBtn) {
+        printBtn.onclick = function() {
+            if (isSpecialBrowser()) {
+                alert('当前浏览器不支持打印功能，请点击右上角菜单用系统浏览器（如Chrome/Safari）打开本页再打印，或联系顾问获取PDF文件。');
+            } else {
+                window.print();
+            }
+        }
+    }
+    var genJpgBtn = document.getElementById('genJpgBtn');
+    if (genJpgBtn) {
+        genJpgBtn.onclick = function() {
+            var node = document.getElementById('contractContent');
+            html2canvas(node, {backgroundColor: '#fff', scale: 2}).then(function(canvas) {
+                var imgData = canvas.toDataURL('image/jpeg', 0.95);
+                var link = document.createElement('a');
+                link.href = imgData;
+                link.download = 'contract.jpg';
+                link.click();
+            });
+        };
+    }
+});
 </script>
 <?php endif;?>
 </body>
